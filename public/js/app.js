@@ -180,11 +180,17 @@ async function checkRelease() {
     
     // 如果今天未领取且有可领取金额
     if (currentUser.lastReleaseDate !== today) {
-        const releaseAmount = parseFloat((currentUser.lockedBait * 0.002).toFixed(2));
-        const accelerateAmount = currentUser.pendingAccelerateAmount || 0;
-        
-        if (releaseAmount > 0 || accelerateAmount > 0) {
-            showReleasePopup(releaseAmount + accelerateAmount);
+        // 从服务器获取释放金额
+        try {
+            const response = await api.transaction.getReleaseAmount();
+            if (response.success) {
+                const totalAmount = response.data.releaseAmount + (response.data.accelerateAmount || 0);
+                if (totalAmount > 0) {
+                    showReleasePopup(totalAmount);
+                }
+            }
+        } catch (error) {
+            console.error('获取释放金额失败:', error);
         }
     }
 }

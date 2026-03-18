@@ -149,6 +149,11 @@ const api = {
         // 获取交易记录
         getRecords: async (page = 1, limit = 20) => {
             return await request(`/transaction/records?page=${page}&limit=${limit}`);
+        },
+        
+        // 获取释放金额
+        getReleaseAmount: async () => {
+            return await request('/transaction/release-amount');
         }
     },
     

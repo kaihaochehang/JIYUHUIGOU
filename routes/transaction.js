@@ -306,4 +306,40 @@ router.get('/records', authenticate, async (req, res) => {
   }
 });
 
+// 获取释放金额
+router.get('/release-amount', authenticate, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    const today = new Date().toISOString().split('T')[0];
+
+    // 检查今天是否已领取
+    if (user.lastReleaseDate === today) {
+      return res.json({
+        success: true,
+        data: {
+          releaseAmount: 0,
+          accelerateAmount: 0
+        }
+      });
+    }
+
+    const releaseAmount = calculateReleaseAmount(user.lockedBait);
+    const accelerateAmount = parseFloat(user.pendingAccelerateAmount || 0);
+
+    res.json({
+      success: true,
+      data: {
+        releaseAmount,
+        accelerateAmount
+      }
+    });
+  } catch (error) {
+    console.error('获取释放金额错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取释放金额失败'
+    });
+  }
+});
+
 module.exports = router;

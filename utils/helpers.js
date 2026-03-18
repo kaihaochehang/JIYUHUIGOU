@@ -46,21 +46,21 @@ const createTransactionRecord = async (userId, type, yellowFish, lockedBait, rem
 };
 
 // 计算积分释放金额
-const calculateReleaseAmount = (lockedBait) => {
-  const rate = parseFloat(process.env.DAILY_RELEASE_RATE) || 0.002;
-  return parseFloat((lockedBait * rate).toFixed(2));
+const calculateReleaseAmount = (lockedBait, rate = null) => {
+  const releaseRate = rate || parseFloat(process.env.DAILY_RELEASE_RATE) || 0.002;
+  return parseFloat((lockedBait * releaseRate).toFixed(2));
 };
 
 // 计算转账奖励
-const calculateTransferReward = (amount) => {
-  const rewardRate = parseFloat(process.env.TRANSFER_REWARD_RATE) || 0.5;
-  return parseFloat((amount * rewardRate).toFixed(2));
+const calculateTransferReward = (amount, rewardRate = null) => {
+  const rate = rewardRate || parseFloat(process.env.TRANSFER_REWARD_RATE) || 0.5;
+  return parseFloat((amount * rate).toFixed(2));
 };
 
 // 计算兑换加速金额
-const calculateAccelerateAmount = (amount) => {
-  const accelerateRate = parseFloat(process.env.EXCHANGE_ACCELERATE_RATE) || 0.08;
-  return parseFloat((amount * accelerateRate).toFixed(2));
+const calculateAccelerateAmount = (amount, accelerateRate = null) => {
+  const rate = accelerateRate || parseFloat(process.env.EXCHANGE_ACCELERATE_RATE) || 0.08;
+  return parseFloat((amount * rate).toFixed(2));
 };
 
 module.exports = {
