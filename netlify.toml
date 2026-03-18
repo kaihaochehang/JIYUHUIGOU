@@ -7,6 +7,32 @@
   command = "npm run dev"
   port = 3000
 
+# API路由重定向 - 所有API请求都指向函数
+[[redirects]]
+  from = "/auth/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/user/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/transaction/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/announcement/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# 前端路由 - 所有非API请求都返回index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -18,3 +44,4 @@
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Max-Age = "86400"

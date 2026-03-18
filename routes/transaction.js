@@ -1,7 +1,5 @@
 const express = require('express');
-const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const { User, Transaction } = require('../models');
 const { authenticate } = require('../middleware/auth');
 const { 
   verifyPassword, 
@@ -12,13 +10,17 @@ const {
 } = require('../utils/helpers');
 const { Op } = require('sequelize');
 
+module.exports = (db) => {
+  const router = express.Router();
+  const { User, Transaction, sequelize } = db;
+
 // 转账
 router.post('/transfer', authenticate, [
   body('toUserId').notEmpty().withMessage('请输入接收方账号'),
   body('amount').isFloat({ min: 100 }).withMessage('转账金额至少100'),
   body('tradePassword').notEmpty().withMessage('请输入交易密码')
 ], async (req, res) => {
-  const transaction = await require('../models').sequelize.transaction();
+  const transaction = await sequelize.transaction();
   
   try {
     const errors = validationResult(req);
@@ -123,7 +125,7 @@ router.post('/transfer', authenticate, [
 router.post('/exchange', authenticate, [
   body('amount').isFloat({ min: 100 }).withMessage('兑换金额至少100')
 ], async (req, res) => {
-  const transaction = await require('../models').sequelize.transaction();
+  const transaction = await sequelize.transaction();
   
   try {
     const errors = validationResult(req);
@@ -342,4 +344,5 @@ router.get('/release-amount', authenticate, async (req, res) => {
   }
 });
 
-module.exports = router;
+  return router;
+};

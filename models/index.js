@@ -1,25 +1,47 @@
 const { Sequelize } = require('sequelize');
 
-// 检测是否在 Vercel 环境中
-const isVercel = process.env.VERCEL === '1';
-
 // 从环境变量获取数据库配置
 const DB_URL = process.env.DATABASE_URL;
+
+// 添加调试日志
+console.log('DATABASE_URL是否存在:', !!DB_URL);
+console.log('当前环境:', process.env.NODE_ENV);
+console.log('NETLIFY环境:', process.env.NETLIFY);
 
 let sequelize;
 let db = {};
 
-if (!isVercel && DB_URL) {
-  // 在非 Vercel 环境中正常初始化 Sequelize
+if (DB_URL) {
+  // 正常初始化 Sequelize
   try {
+    // 检测是否在Netlify环境
+    const isNetlify = process.env.NETLIFY === 'true';
+    
     sequelize = new Sequelize(DB_URL, {
       dialect: 'postgres',
       logging: process.env.NODE_ENV === 'development' ? console.log : false,
-      pool: {
-        max: 10,
+      pool: isNetlify ? {
+        // Netlify环境：使用更小的连接池和更短的超时
+        max: 2,
         min: 0,
-        acquire: 30000,
-        idle: 10000
+        acquire: 5000,
+        idle: 1000,
+        evict: 5000
+      } : {
+        // 本地环境：正常配置
+        max: 5,
+        min: 0,
+        acquire: 10000,
+        idle: 5000,
+        evict: 10000
+      },
+      dialectOptions: {
+        connectTimeout: isNetlify ? 3000 : 5000,
+        // Netlify环境需要SSL
+        ssl: isNetlify ? {
+          require: true,
+          rejectUnauthorized: false
+        } : false
       }
     });
 
@@ -41,65 +63,34 @@ if (!isVercel && DB_URL) {
     db.User.hasMany(db.User, { foreignKey: 'referrerId', as: 'referrals' });
   } catch (error) {
     console.error('数据库初始化失败:', error);
-    // 初始化失败时创建一个空对象
-    db = {
-      Sequelize,
-      sequelize: {
-        authenticate: () => Promise.reject(new Error('数据库连接失败')),
-        sync: () => Promise.resolve()
-      },
-      User: {
-        findOne: () => Promise.resolve(null),
-        create: () => Promise.reject(new Error('数据库不可用')),
-        findAll: () => Promise.resolve([])
-      },
-      Transaction: {
-        create: () => Promise.reject(new Error('数据库不可用')),
-        findAll: () => Promise.resolve([])
-      },
-      Announcement: {
-        findOne: () => Promise.resolve(null),
-        findAll: () => Promise.resolve([])
-      }
-    };
+    // 重新抛出错误，确保应用知道数据库连接失败
+    throw new Error('数据库连接失败: ' + error.message);
   }
 } else {
-  // 在 Vercel 环境中返回模拟的 Sequelize 实例
-  console.log('运行在 Vercel 环境中，使用模拟数据库');
-  db = {
-    Sequelize,
-    sequelize: {
-      authenticate: () => Promise.resolve(),
-      sync: () => Promise.resolve()
-    },
-    User: {
-      findOne: () => Promise.resolve(null),
-      create: () => Promise.reject(new Error('数据库不可用')),
-      findAll: () => Promise.resolve([])
-    },
-    Transaction: {
-      create: () => Promise.reject(new Error('数据库不可用')),
-      findAll: () => Promise.resolve([])
-    },
-    Announcement: {
-      findOne: () => Promise.resolve({
-        id: 1,
-        title: '欢迎使用金渔惠购',
-        content: '这是一个模拟公告，实际数据需要在非 Vercel 环境中获取',
-        priority: 10,
-        isactive: true,
-        createdat: new Date()
-      }),
-      findAll: () => Promise.resolve([{
-        id: 1,
-        title: '欢迎使用金渔惠购',
-        content: '这是一个模拟公告，实际数据需要在非 Vercel 环境中获取',
-        priority: 10,
-        isactive: true,
-        createdat: new Date()
-      }])
-    }
+  // 没有数据库配置时返回备用对象
+  console.warn('没有数据库配置，使用备用对象');
+  db.Sequelize = Sequelize;
+  db.sequelize = {
+    authenticate: () => Promise.reject(new Error('数据库连接失败')),
+    sync: () => Promise.resolve()
+  };
+  db.User = {
+    findOne: () => Promise.reject(new Error('数据库不可用')),
+    create: () => Promise.reject(new Error('数据库不可用')),
+    findAll: () => Promise.reject(new Error('数据库不可用')),
+    findByPk: () => Promise.reject(new Error('数据库不可用'))
+  };
+  db.Transaction = {
+    create: () => Promise.reject(new Error('数据库不可用')),
+    findAll: () => Promise.reject(new Error('数据库不可用')),
+    findAndCountAll: () => Promise.reject(new Error('数据库不可用'))
+  };
+  db.Announcement = {
+    findOne: () => Promise.reject(new Error('数据库不可用')),
+    findAll: () => Promise.reject(new Error('数据库不可用')),
+    findByPk: () => Promise.reject(new Error('数据库不可用'))
   };
 }
 
+// 导出数据库实例
 module.exports = db;

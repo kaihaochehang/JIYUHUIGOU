@@ -1,7 +1,9 @@
 const express = require('express');
-const router = express.Router();
-const { Announcement } = require('../models');
 const { authenticate } = require('../middleware/auth');
+
+module.exports = (db) => {
+  const router = express.Router();
+  const { Announcement } = db;
 
 // 获取公告列表（公开接口）
 router.get('/', async (req, res) => {
@@ -71,4 +73,5 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-module.exports = router;
+  return router;
+};

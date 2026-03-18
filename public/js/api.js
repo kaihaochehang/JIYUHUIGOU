@@ -1,5 +1,7 @@
 // API 基础配置
-const API_BASE_URL = window.location.origin + '/api';
+// 检测是否在Netlify环境中（通过URL判断）
+const isNetlify = window.location.hostname.includes('netlify.app');
+const API_BASE_URL = isNetlify ? window.location.origin : window.location.origin + '/api';
 
 // 存储令牌
 let authToken = localStorage.getItem('authToken') || null;

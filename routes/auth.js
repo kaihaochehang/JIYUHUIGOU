@@ -1,7 +1,5 @@
 const express = require('express');
-const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const { User } = require('../models');
 const { generateToken } = require('../middleware/auth');
 const { 
   generateInviteCode, 
@@ -9,6 +7,11 @@ const {
   verifyPassword,
   createTransactionRecord 
 } = require('../utils/helpers');
+
+// 导出路由函数，接受 db 对象作为参数
+module.exports = (db) => {
+  const router = express.Router();
+  const { User } = db;
 
 // 注册
 router.post('/register', [
@@ -167,4 +170,5 @@ router.post('/login', [
   }
 });
 
-module.exports = router;
+  return router;
+};

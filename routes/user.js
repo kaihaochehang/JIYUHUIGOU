@@ -1,9 +1,11 @@
 const express = require('express');
-const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const { User, Transaction } = require('../models');
 const { authenticate } = require('../middleware/auth');
 const { hashPassword, verifyPassword } = require('../utils/helpers');
+
+module.exports = (db) => {
+  const router = express.Router();
+  const { User, Transaction } = db;
 
 // 获取用户信息
 router.get('/profile', authenticate, async (req, res) => {
@@ -123,4 +125,5 @@ router.get('/team', authenticate, async (req, res) => {
   }
 });
 
-module.exports = router;
+  return router;
+};

@@ -11,12 +11,19 @@ const isVercel = process.env.VERCEL === '1';
 // 检测是否在 Netlify 环境中运行
 const isNetlify = process.env.NETLIFY === 'true';
 
-// 初始化Supabase
-const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+// 初始化Supabase（仅在环境变量存在时）
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY
+    );
+  } catch (error) {
+    console.error('Supabase 初始化失败:', error);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,7 +47,7 @@ const limiter = rateLimit({
   max: 100, // 每个IP最多100个请求
   message: '请求过于频繁，请稍后再试'
 });
-app.use('/api/', limiter);
+app.use(limiter);
 
 // CORS
 app.use(cors({
@@ -55,35 +62,51 @@ app.use(express.urlencoded({ extended: true }));
 // 静态文件
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 数据库连接 - 仅在非 Vercel 和非 Netlify 环境中连接
+// 数据库连接
 let db;
-if (!isVercel && !isNetlify) {
-  try {
-    db = require('./models');
+try {
+  db = require('./models');
+  // 只在非 Netlify 环境中验证连接
+  if (!isNetlify) {
     // 同步数据库（仅验证连接，不修改表结构）
     db.sequelize.authenticate().then(() => {
       console.log('数据库连接成功');
     }).catch(err => {
       console.error('数据库连接失败:', err);
     });
-  } catch (error) {
-    console.error('数据库初始化失败:', error);
   }
-} else {
-  console.log(`运行在 ${isVercel ? 'Vercel' : 'Netlify'} 环境中，跳过数据库连接`);
-  // 创建一个空的 db 对象，避免后续代码出错
+} catch (error) {
+  console.error('数据库初始化失败:', error);
+  // 创建一个备用的 db 对象，确保应用能正常启动
   db = {
+    Sequelize: require('sequelize'),
     sequelize: {
-      authenticate: () => Promise.resolve()
+      authenticate: () => Promise.reject(new Error('数据库连接失败')),
+      sync: () => Promise.resolve()
+    },
+    User: {
+      findOne: () => Promise.reject(new Error('数据库不可用')),
+      create: () => Promise.reject(new Error('数据库不可用')),
+      findAll: () => Promise.reject(new Error('数据库不可用'))
+    },
+    Transaction: {
+      create: () => Promise.reject(new Error('数据库不可用')),
+      findAll: () => Promise.reject(new Error('数据库不可用'))
+    },
+    Announcement: {
+      findOne: () => Promise.reject(new Error('数据库不可用')),
+      findAll: () => Promise.reject(new Error('数据库不可用'))
     }
   };
 }
 
-// 路由
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/user', require('./routes/user'));
-app.use('/api/transaction', require('./routes/transaction'));
-app.use('/api/announcement', require('./routes/announcement'));
+// 路由 - 在Netlify环境中使用不带/api前缀的路径
+const apiPrefix = isNetlify ? '' : '/api';
+// 将 db 对象传递给路由
+app.use(`${apiPrefix}/auth`, require('./routes/auth')(db));
+app.use(`${apiPrefix}/user`, require('./routes/user')(db));
+app.use(`${apiPrefix}/transaction`, require('./routes/transaction')(db));
+app.use(`${apiPrefix}/announcement`, require('./routes/announcement')(db));
 
 // 前端路由 - 所有非API请求都返回index.html
 app.get('*', (req, res) => {
@@ -100,8 +123,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 启动定时任务
-require('./cron/jobs');
+// 启动定时任务（仅在非 Netlify 环境中）
+if (!isNetlify) {
+  require('./cron/jobs');
+}
 
 // 获取本地 IP 地址
 function getLocalIP() {
