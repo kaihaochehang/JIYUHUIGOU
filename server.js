@@ -5,6 +5,12 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
+// 检测是否在 Vercel 环境中运行
+const isVercel = process.env.VERCEL === '1';
+
+// 检测是否在 Netlify 环境中运行
+const isNetlify = process.env.NETLIFY === 'true';
+
 // 初始化Supabase
 const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(
@@ -49,9 +55,9 @@ app.use(express.urlencoded({ extended: true }));
 // 静态文件
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 数据库连接 - 仅在非 Vercel 环境中连接
+// 数据库连接 - 仅在非 Vercel 和非 Netlify 环境中连接
 let db;
-if (!isVercel) {
+if (!isVercel && !isNetlify) {
   try {
     db = require('./models');
     // 同步数据库（仅验证连接，不修改表结构）
@@ -64,7 +70,7 @@ if (!isVercel) {
     console.error('数据库初始化失败:', error);
   }
 } else {
-  console.log('运行在 Vercel 环境中，跳过数据库连接');
+  console.log(`运行在 ${isVercel ? 'Vercel' : 'Netlify'} 环境中，跳过数据库连接`);
   // 创建一个空的 db 对象，避免后续代码出错
   db = {
     sequelize: {
@@ -113,11 +119,8 @@ function getLocalIP() {
 
 const localIP = getLocalIP();
 
-// 检测是否在 Vercel 环境中运行
-const isVercel = process.env.VERCEL === '1';
-
-// 只在非 Vercel 环境中启动服务器监听
-if (!isVercel) {
+// 只在非 Vercel 和非 Netlify 环境中启动服务器监听
+if (!isVercel && !isNetlify) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`服务器运行在端口 ${PORT}`);
     console.log(`本地访问: http://localhost:${PORT}`);
@@ -125,7 +128,7 @@ if (!isVercel) {
     console.log(`外部访问: http://0.0.0.0:${PORT}`);
   });
 } else {
-  console.log('运行在 Vercel 环境中');
+  console.log(`运行在 ${isVercel ? 'Vercel' : 'Netlify'} 环境中`);
 }
 
 module.exports = app;
