@@ -45,3 +45,6 @@ ssl/
 
 .vercel
 .env*.local
+
+# Netlify
+.netlify/
