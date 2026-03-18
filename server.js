@@ -49,15 +49,29 @@ app.use(express.urlencoded({ extended: true }));
 // 静态文件
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 数据库连接
-const db = require('./models');
-
-// 同步数据库（仅验证连接，不修改表结构）
-db.sequelize.authenticate().then(() => {
-  console.log('数据库连接成功');
-}).catch(err => {
-  console.error('数据库连接失败:', err);
-});
+// 数据库连接 - 仅在非 Vercel 环境中连接
+let db;
+if (!isVercel) {
+  try {
+    db = require('./models');
+    // 同步数据库（仅验证连接，不修改表结构）
+    db.sequelize.authenticate().then(() => {
+      console.log('数据库连接成功');
+    }).catch(err => {
+      console.error('数据库连接失败:', err);
+    });
+  } catch (error) {
+    console.error('数据库初始化失败:', error);
+  }
+} else {
+  console.log('运行在 Vercel 环境中，跳过数据库连接');
+  // 创建一个空的 db 对象，避免后续代码出错
+  db = {
+    sequelize: {
+      authenticate: () => Promise.resolve()
+    }
+  };
+}
 
 // 路由
 app.use('/api/auth', require('./routes/auth'));
